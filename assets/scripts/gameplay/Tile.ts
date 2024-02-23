@@ -12,6 +12,7 @@ export class Tile extends Component {
     public x = 0
     public y = 0
     public isFalling = false
+    public spawnTime = 0
     public tween: Tween<Node> | null = null
 
     public getColor() {

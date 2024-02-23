@@ -25,7 +25,7 @@ export class PlayableArea extends Component {
 
     private updateGameSettings() {
         this._height = sys.localStorage.getItem("FieldHeight") || this._height
-        this._width = 1 // sys.localStorage.getItem("FieldWidth") || this._width
+        this._width = sys.localStorage.getItem("FieldWidth") || this._width
         this._colors = sys.localStorage.getItem("ColorsAmount") || this._colors
         this._minGroupSize = sys.localStorage.getItem("MinGroupSize") || this._minGroupSize
 
@@ -128,7 +128,10 @@ export class PlayableArea extends Component {
 
         if (tile.tween) tile.tween.stop()
 
+        let delay = Math.max(0, tile.spawnTime - Date.now() / 1000)
+
         tile.tween = tween(tile.node)
+            .delay(delay)
             .to(distance / (this._tileMoveSpeed * this._nodeSize), { position: new Vec3(toPosX, toPosY) }, {
                 onComplete: () => {
                     tile.isFalling = false
@@ -154,17 +157,13 @@ export class PlayableArea extends Component {
         this._field[toY][toX] = tileComponent
         tileComponent.x = toX
         tileComponent.y = toY
-        tileComponent.isFalling = true 
+        tileComponent.isFalling = true
+        tileComponent.spawnTime = Date.now() / 1000 + delay
 
         tween(tile)
-            .delay(delay / this._tileMoveSpeed)
+            .delay(delay)
             .set({ active: true })
             .call(() => {this.moveTile(tileComponent, toX, toY)})
-            // .to(distance / (this._tileMoveSpeed * this._nodeSize), { position: new Vec3(toPosX, toPosY) }, {
-            //     onComplete: () => {
-            //         tileComponent.isFalling = false
-            //     }
-            // })
             .start()
     }
 
@@ -219,11 +218,13 @@ export class PlayableArea extends Component {
 
             for (let x = 0; x < this._width; ++x) {
                 let toY = 0
-                let delay = 1
+                let timeUnit = 1 / this._tileMoveSpeed
+                let delay = this._field[this._height - 1][x] ? timeUnit : 0
 
                 for (let y = 0; y < this._height; ++y) {
                     if (this._field[y][x]) {
                         if (toY != y) {
+                            delay = Math.max(delay, timeUnit + this._field[y][x].spawnTime - Date.now() / 1000)
                             this.moveTile(this._field[y][x], x, toY)
                         } 
                         toY += 1
@@ -232,7 +233,7 @@ export class PlayableArea extends Component {
 
                 for (let y = toY; y < this._height; ++y) {
                     this.pourTile(x, y, delay)
-                    delay += 1
+                    delay += timeUnit
                 }
             }
         }
