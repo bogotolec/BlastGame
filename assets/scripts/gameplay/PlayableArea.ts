@@ -12,6 +12,24 @@ export class PlayableArea extends Component {
     @property (SpriteFrame)
     public tileSpriteFrames: SpriteFrame[] = []
 
+    private _currentScore = 0
+    private _scoreUpdatedCallbacks = []
+
+    public get CurrentScore() {
+        return this._currentScore
+    }
+
+    private set CurrentScore(score: number) {
+        this._currentScore = score
+        this._scoreUpdatedCallbacks.forEach((callback: Function) => {
+            callback()
+        })
+    }
+
+    public onScoreUpdated(callback: Function) {
+        this._scoreUpdatedCallbacks.push(callback)
+    }
+
     private _height = 10
     private _width = 12
     private _colors = 2
@@ -134,6 +152,10 @@ export class PlayableArea extends Component {
         return distance / (this._tileMoveSpeed * this._nodeSize)
     }
 
+    private calculateScore(groupSize: number): number {
+        return groupSize * 10
+    }
+
     private moveTile(this: PlayableArea, tile: Tile, toX: number, toY: number) {
         let fromX = tile.x, fromY = tile.y
 
@@ -250,12 +272,16 @@ export class PlayableArea extends Component {
             return
         }
 
+
         let x = tile.x, y = tile.y
 
         let group = this.getGroup(x, y)
 
         if (group.length >= this._minGroupSize) {
+
             this._currentSelectedTile = null
+            this.CurrentScore += this.calculateScore(group.length) 
+
             group.forEach(([x, y]) => {
                 if (this._field[y][x]) {
                     this.deleteTile(this._field[y][x])
