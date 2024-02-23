@@ -23,6 +23,8 @@ export class PlayableArea extends Component {
 
     private _field: Tile[][] = []
 
+    private _tileGarbage = new Queue()
+
     private updateGameSettings() {
         this._height = sys.localStorage.getItem("FieldHeight") || this._height
         this._width = sys.localStorage.getItem("FieldWidth") || this._width
@@ -46,7 +48,16 @@ export class PlayableArea extends Component {
     }
 
     private generateTile() {
-        let tile = instantiate(this.tilePrefab)
+        let tile
+        if (this._tileGarbage.size() > 0) {
+            tile = this._tileGarbage.dequeue()
+        }
+        else {
+            tile = instantiate(this.tilePrefab)
+            tile.parent = this.node
+            tile.active = false
+        }
+
         let tileComponent = tile.getComponent(Tile)
 
         let color = this.getRandomColor()
@@ -59,6 +70,17 @@ export class PlayableArea extends Component {
         tile.on(Node.EventType.MOUSE_DOWN, this.onClick, this, tileComponent)
 
         return tile
+    }
+
+    private deleteTile(tile: Tile) {
+        let tileNode = tile.node
+        let x = tile.x, y = tile.y
+
+        tile.unhighlight()
+        tileNode.active = false
+        this._tileGarbage.enqueue(tileNode)
+
+        this._field[y][x] = null
     }
 
     private readonly _groupDirections = [
@@ -107,6 +129,11 @@ export class PlayableArea extends Component {
         return result
     }
 
+    private calculateMoveTime(fromPosX, fromPosY, toPosX, toPosY) {
+        let distance = Math.sqrt((toPosX - fromPosX) ** 2 + (toPosY - fromPosY) ** 2)
+        return distance / (this._tileMoveSpeed * this._nodeSize)
+    }
+
     private moveTile(this: PlayableArea, tile: Tile, toX: number, toY: number) {
         let fromX = tile.x, fromY = tile.y
 
@@ -117,8 +144,6 @@ export class PlayableArea extends Component {
         let [toPosX, toPosY] = this.getPositionFromCoords(toX, toY)
         let fromPosX = tile.node.position.x, fromPosY = tile.node.position.y
 
-        let distance = Math.sqrt((toPosX - fromPosX) ** 2 + (toPosY - fromPosY) ** 2)
-
         this._field[fromY][fromX] = null
 
         this._field[toY][toX] = tile
@@ -126,18 +151,23 @@ export class PlayableArea extends Component {
         tile.y = toY
         tile.isFalling = true
 
-        if (tile.tween) tile.tween.stop()
 
         let delay = Math.max(0, tile.spawnTime - Date.now() / 1000)
 
-        tile.tween = tween(tile.node)
-            .delay(delay)
-            .to(distance / (this._tileMoveSpeed * this._nodeSize), { position: new Vec3(toPosX, toPosY) }, {
-                onComplete: () => {
-                    tile.isFalling = false
-                }
-            })
-            .start()
+        let tweenTime = this.calculateMoveTime(fromPosX, fromPosY, toPosX, toPosY)
+
+        this.scheduleOnce(() => {
+            if (tile.tween) tile.tween.stop()
+
+            tile.tween = tween(tile.node)
+                .to(tweenTime, 
+                    { position: new Vec3(toPosX, toPosY) }, 
+                    { onComplete: () => { tile.isFalling = false }
+                })
+                .start()
+        }, delay) 
+
+        return delay + tweenTime
     }
 
     private pourTile(this: PlayableArea, toX: number, toY: number, delay: number) {
@@ -150,8 +180,6 @@ export class PlayableArea extends Component {
         let distance = Math.sqrt((toPosX - fromPosX) ** 2 + (toPosY - fromPosY) ** 2)
 
         tile.setPosition(fromPosX, fromPosY) 
-        tile.parent = this.node
-        tile.active = false
 
         let tileComponent = tile.getComponent(Tile)
         this._field[toY][toX] = tileComponent
@@ -160,18 +188,28 @@ export class PlayableArea extends Component {
         tileComponent.isFalling = true
         tileComponent.spawnTime = Date.now() / 1000 + delay
 
-        tween(tile)
-            .delay(delay)
-            .set({ active: true })
-            .call(() => {this.moveTile(tileComponent, toX, toY)})
-            .start()
+        let moveEndAfter = delay + this.calculateMoveTime(fromPosX, fromPosY, toPosX, toPosY)
+
+        this.scheduleOnce(() => {
+            tile.active = true
+            this.moveTile(tileComponent, toX, toY)
+        }, delay)
+
+        return moveEndAfter
     }
 
-    private onHover(this: PlayableArea, event: EventMouse) {
+    private unhighlight(this: PlayableArea) {
+        for (let y = 0; y < this._height; ++y) {
+            for (let x = 0; x < this._width; ++x) {
+                if (this._field[y][x]) {
+                    this._field[y][x].unhighlight()
+                }
+            }
+        }
+    }
 
-        let tile = event.target.getComponent(Tile)
-
-        if (tile.isFalling) {
+    private highlightGroupbyTile(this: PlayableArea, tile: Tile) {
+        if (!tile || tile.isFalling) {
             return
         }
 
@@ -187,14 +225,17 @@ export class PlayableArea extends Component {
         }
     }
 
+    private _currentSelectedTile = null
+
+    private onHover(this: PlayableArea, event: EventMouse) {
+        let tile = event.target.getComponent(Tile)
+        this._currentSelectedTile = tile
+        this.highlightGroupbyTile(tile)
+    }
+
     private onHoverEnd(this: PlayableArea, event: EventMouse) {
-        for (let y = 0; y < this._height; ++y) {
-            for (let x = 0; x < this._width; ++x) {
-                if (this._field[y][x]) {
-                    this._field[y][x].unhighlight()
-                }
-            }
-        }
+        this._currentSelectedTile = null
+        this.unhighlight()
     }
 
     private onClick(this: PlayableArea, event: EventMouse) {
@@ -209,12 +250,14 @@ export class PlayableArea extends Component {
         let group = this.getGroup(x, y)
 
         if (group.length >= this._minGroupSize) {
+            this._currentSelectedTile = null
             group.forEach(([x, y]) => {
                 if (this._field[y][x]) {
-                    this._field[y][x].node.destroy()
-                    this._field[y][x] = null
+                    this.deleteTile(this._field[y][x])
                 }
             })
+
+            let tileFallEndTimings = new Set()
 
             for (let x = 0; x < this._width; ++x) {
                 let toY = 0
@@ -225,17 +268,27 @@ export class PlayableArea extends Component {
                     if (this._field[y][x]) {
                         if (toY != y) {
                             delay = Math.max(delay, timeUnit + this._field[y][x].spawnTime - Date.now() / 1000)
-                            this.moveTile(this._field[y][x], x, toY)
+                            let tileFallAt = this.moveTile(this._field[y][x], x, toY)
+                            tileFallAt = Math.ceil(tileFallAt * 10) / 10
+                            tileFallEndTimings.add(tileFallAt)
                         } 
                         toY += 1
                     }
                 }
 
                 for (let y = toY; y < this._height; ++y) {
-                    this.pourTile(x, y, delay)
+                    let tileFallAt = this.pourTile(x, y, delay)
+                    tileFallAt = Math.ceil(tileFallAt * 10) / 10
+                    tileFallEndTimings.add(tileFallAt)
                     delay += timeUnit
                 }
             }
+
+            tileFallEndTimings.forEach((t: number) => {
+                this.scheduleOnce(() => {
+                    this.highlightGroupbyTile(this._currentSelectedTile)
+                }, t + 0.05)
+            })
         }
     }
 
@@ -250,7 +303,7 @@ export class PlayableArea extends Component {
                 let [posX, posY] = this.getPositionFromCoords(x, y)
 
                 tile.setPosition(posX, posY)
-                tile.parent = this.node
+                tile.active = true
 
                 let tileComponent = tile.getComponent(Tile)
                 this._field[y][x] = tileComponent
