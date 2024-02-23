@@ -1,4 +1,4 @@
-import { _decorator, Color, Component, Node, Sprite, SpriteFrame } from 'cc';
+import { _decorator, Color, Component, Node, Sprite, SpriteFrame, Tween } from 'cc';
 const { ccclass, property } = _decorator;
 
 @ccclass('Tile')
@@ -11,6 +11,8 @@ export class Tile extends Component {
 
     public x = 0
     public y = 0
+    public isFalling = false
+    public tween: Tween<Node> | null = null
 
     public getColor() {
         return this.color
