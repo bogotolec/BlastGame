@@ -143,6 +143,9 @@ export class PlayableArea extends Component {
 
         let [toPosX, toPosY] = this.getPositionFromCoords(toX, toY)
         let fromPosX = tile.node.position.x, fromPosY = tile.node.position.y
+        
+        let uiTransform = tile.getComponent(UITransform);
+        uiTransform.priority = toY
 
         this._field[fromY][fromX] = null
 
@@ -180,6 +183,8 @@ export class PlayableArea extends Component {
         let distance = Math.sqrt((toPosX - fromPosX) ** 2 + (toPosY - fromPosY) ** 2)
 
         tile.setPosition(fromPosX, fromPosY) 
+        let uiTransform = tile.getComponent(UITransform);
+        uiTransform.priority = toY
 
         let tileComponent = tile.getComponent(Tile)
         this._field[toY][toX] = tileComponent
@@ -303,6 +308,10 @@ export class PlayableArea extends Component {
                 let [posX, posY] = this.getPositionFromCoords(x, y)
 
                 tile.setPosition(posX, posY)
+
+                let uiTransform = tile.getComponent(UITransform);
+                uiTransform.priority = y
+
                 tile.active = true
 
                 let tileComponent = tile.getComponent(Tile)
