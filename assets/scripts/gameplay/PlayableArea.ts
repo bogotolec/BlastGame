@@ -22,8 +22,8 @@ export class PlayableArea extends Component {
     private _gameField: GameField
     private _tileGenerator: TileGenerator
 
-    private _height = 10
-    private _width = 12
+    private _height = 5
+    private _width = 5
     private _colors = 2
     private _minGroupSize = 2
 

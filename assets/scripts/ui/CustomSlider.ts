@@ -32,7 +32,7 @@ export class CustomSlider extends Component {
 
         let storedValue = sys.localStorage.getItem(this.storageVariable)
 
-        if (storedValue == null) 
+        if (storedValue != null) 
             this._slider.progress = this.valueToProgress(storedValue)
         else 
             this.saveValueToStorage()
