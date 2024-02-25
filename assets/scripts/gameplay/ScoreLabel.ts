@@ -9,13 +9,14 @@ export class ScoreLabel extends Component {
     public readonly playableArea: PlayableArea
 
     start() {
+        let scoreCounter = this.playableArea.getScoreCounter()
         let label = this.node.getComponent(Label)
         let updateScore = () => {
-            label.string = this.playableArea.CurrentScore.toString()
+            label.string = scoreCounter.CurrentScore.toString()
         }
 
         updateScore()
-        this.playableArea.onScoreUpdated(updateScore)
+        scoreCounter.onScoreUpdated(updateScore)
     }
 
     update(deltaTime: number) {
