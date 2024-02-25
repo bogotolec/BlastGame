@@ -3,6 +3,7 @@ import { Tile } from './Tile';
 import { GameField } from './GameField';
 import { TileGenerator } from './TileGenerator';
 import { ScoreCounter } from './ScoreCounter';
+import { TurnsCounter } from './TurnsCounter';
 const { ccclass, property } = _decorator;
 
 @ccclass('PlayableArea')
@@ -25,9 +26,14 @@ export class PlayableArea extends Component {
     private _tileMoveSpeed = 10
 
     private _scoreCounter = new ScoreCounter()
+    private _turnsCounter = new TurnsCounter(50)
 
     public getScoreCounter() {
         return this._scoreCounter
+    }
+
+     public getTurnsCounter() {
+        return this._turnsCounter
     }
 
     private updateGameSettings() {
@@ -87,7 +93,9 @@ export class PlayableArea extends Component {
         if (group.length >= this._minGroupSize) {
 
             this._currentSelectedTile = null
+
             this._scoreCounter.addScore(this.calculateScore(group.length))
+            this._turnsCounter.decrementTurns()
 
             group.forEach((tile: Tile) => {
                 this._tileGenerator.deleteTile(tile)
