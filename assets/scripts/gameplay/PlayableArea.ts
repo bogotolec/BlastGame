@@ -146,6 +146,10 @@ export class PlayableArea extends Component {
                     this.highlightGroupbyTile(this._currentSelectedTile)
                 }, t + 0.05)
             })
+
+            if (!this._gameField.isGroupOfSizeExists(this._minGroupSize)) {
+                this.lose()
+            }
         }
     }
 

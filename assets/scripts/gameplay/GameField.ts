@@ -57,7 +57,7 @@ export class GameField {
         [0, 1],
     ]
 
-    public getGroup(x: number, y: number) {
+    public getGroup(x: number, y: number, countFalling: boolean = false) {
         let result: Tile[] = []
 
         if (!this._field[y][x]) {
@@ -80,7 +80,7 @@ export class GameField {
             this._groupDirections.forEach(([diffX, diffY]) => {
                 let newX = curX + diffX, newY = curY + diffY
 
-                if (this._field[newY] && this._field[newY][newX] && !this._field[newY][newX].isFalling &&
+                if (this._field[newY] && this._field[newY][newX] && (countFalling || !this._field[newY][newX].isFalling) &&
                     this._field[newY][newX].getColor() == desiredColor &&
                     !(visited[newY] && visited[newY][newX])) {
                     queue.enqueue([newX, newY])
@@ -94,6 +94,20 @@ export class GameField {
         }
 
         return result
+    }
+
+    public isGroupOfSizeExists(size: number) : boolean {
+        // check in staggered manner
+        // to speed up it twice
+        for (let y = 0; y < this._height; y++) {
+            for (let x = (y + 1) % 2; x < this._width; x += 2) {
+                let group = this.getGroup(x, y, true)
+
+                if (group.length >= size) return true 
+            }
+        }
+
+        return false
     }
 
     public forEachTile(callback: (tile: Tile) => any) {
