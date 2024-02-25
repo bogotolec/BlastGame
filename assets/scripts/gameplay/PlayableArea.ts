@@ -1,10 +1,11 @@
-import { _decorator, Color, Component, EventMouse, Prefab, SpriteFrame, sys, } from 'cc';
+import { _decorator, Button, CCString, Color, Component, EventMouse, Prefab, SpriteFrame, sys, } from 'cc';
 import { Tile } from './Tile';
 import { GameField } from './GameField';
 import { TileGenerator } from './TileGenerator';
 import { ScoreCounter } from './ScoreCounter';
 import { TurnsCounter } from './TurnsCounter';
 import { Popup } from './Popup';
+import { BonusManager } from './BonusManager';
 const { ccclass, property } = _decorator;
 
 @ccclass('PlayableArea')
@@ -19,6 +20,12 @@ export class PlayableArea extends Component {
     @property (Popup)
     public popupWindow: Popup
 
+    @property ([Button])
+    public bonusButtons: Button[] = []
+
+    @property ([CCString])
+    public bonusTypes: string[] = []
+
     private _gameField: GameField
     private _tileGenerator: TileGenerator
 
@@ -31,6 +38,7 @@ export class PlayableArea extends Component {
 
     private _scoreCounter = new ScoreCounter(10000, this.win, this)
     private _turnsCounter = new TurnsCounter(50, this.lose, this)
+    private _bonusManager: BonusManager
 
     private _gameInProgress = false
 
@@ -72,30 +80,45 @@ export class PlayableArea extends Component {
         }
     }
 
-    private _currentSelectedTile = null
+    private collapseTiles() {
+        let tileFallEndTimings = new Set()
 
-    private onHover(this: PlayableArea, event: EventMouse) {
-        if (!this._gameInProgress) return
+        for (let x = 0; x < this._width; ++x) {
+            let toY = 0
+            let timeUnit = 1 / this._tileMoveSpeed
+            let delay = this._gameField.tileExists(x, this._height - 1) ? timeUnit : 0
 
-        let tile = event.target.getComponent(Tile)
-        this._currentSelectedTile = tile
-        this.highlightGroupbyTile(tile)
-    }
+            for (let y = 0; y < this._height; ++y) {
+                if (this._gameField.tileExists(x, y)) {
+                    let tile = this._gameField.getTileAtPosition(x, y)
 
-    private onHoverEnd(this: PlayableArea, event: EventMouse) {
-        this._currentSelectedTile = null
-        this.unhighlight()
-    }
+                    if (toY != y) {
+                        delay = Math.max(delay, timeUnit + tile.spawnTime - Date.now() / 1000)
+                        let tileFallAt = this._gameField.moveTile(tile, x, toY)
+                        tileFallAt = Math.ceil(tileFallAt * 10) / 10
+                        tileFallEndTimings.add(tileFallAt)
+                    } 
+                    toY += 1
+                }
+            }
 
-    private onClick(this: PlayableArea, event: EventMouse) {
-        if (!this._gameInProgress) return
-
-        let tile = event.target.getComponent(Tile)
-        
-        if (tile.isFalling) {
-            return
+            for (let y = toY; y < this._height; ++y) {
+                let tile = this._tileGenerator.generateTile(this.onHover, this.onHoverEnd, this.onClick)
+                let tileFallAt = this._gameField.pourTile(tile.getComponent(Tile), x, y, delay)
+                tileFallAt = Math.ceil(tileFallAt * 10) / 10
+                tileFallEndTimings.add(tileFallAt)
+                delay += timeUnit
+            }
         }
 
+        tileFallEndTimings.forEach((t: number) => {
+            this.scheduleOnce(() => {
+                this.highlightGroupbyTile(this._currentSelectedTile)
+            }, t + 0.05)
+        })
+    }
+
+    private tryDestroyTileGroup(tile: Tile) {
         let x = tile.x, y = tile.y
 
         let group = this._gameField.getGroup(x, y)
@@ -111,46 +134,71 @@ export class PlayableArea extends Component {
                 this._tileGenerator.deleteTile(tile)
             })
 
-            let tileFallEndTimings = new Set()
-
-            for (let x = 0; x < this._width; ++x) {
-                let toY = 0
-                let timeUnit = 1 / this._tileMoveSpeed
-                let delay = this._gameField.tileExists(x, this._height - 1) ? timeUnit : 0
-
-                for (let y = 0; y < this._height; ++y) {
-                    if (this._gameField.tileExists(x, y)) {
-                        let tile = this._gameField.getTileAtPosition(x, y)
-
-                        if (toY != y) {
-                            delay = Math.max(delay, timeUnit + tile.spawnTime - Date.now() / 1000)
-                            let tileFallAt = this._gameField.moveTile(tile, x, toY)
-                            tileFallAt = Math.ceil(tileFallAt * 10) / 10
-                            tileFallEndTimings.add(tileFallAt)
-                        } 
-                        toY += 1
-                    }
-                }
-
-                for (let y = toY; y < this._height; ++y) {
-                    let tile = this._tileGenerator.generateTile(this.onHover, this.onHoverEnd, this.onClick)
-                    let tileFallAt = this._gameField.pourTile(tile.getComponent(Tile), x, y, delay)
-                    tileFallAt = Math.ceil(tileFallAt * 10) / 10
-                    tileFallEndTimings.add(tileFallAt)
-                    delay += timeUnit
-                }
-            }
-
-            tileFallEndTimings.forEach((t: number) => {
-                this.scheduleOnce(() => {
-                    this.highlightGroupbyTile(this._currentSelectedTile)
-                }, t + 0.05)
-            })
+            this.collapseTiles()
 
             if (!this._gameField.isGroupOfSizeExists(this._minGroupSize)) {
                 this.lose()
             }
         }
+    }
+
+    private applyExplosionBonus(tile: Tile) {
+        let tileX = tile.x, tileY = tile.y
+        let range = 2
+
+        for (let y = Math.max(tileY - range, 0); y <= Math.min(tileY + range, this._height - 1); ++y) {
+            for (let x = Math.max(tileX - range, 0); x <= Math.min(tileX + range, this._width - 1); ++x) {
+                let tile = this._gameField.getTileAtPosition(x, y)
+                if (tile && !tile.isFalling) this._tileGenerator.deleteTile(tile)
+            }
+        }
+
+        this.collapseTiles()
+    }
+
+    private _currentSelectedTile = null
+
+    private onHover(this: PlayableArea, event: EventMouse) {
+        if (!this._gameInProgress) return
+
+        let activeBonus = this._bonusManager.getActiveBonus()
+
+        if (activeBonus) {
+            let tile = event.target.getComponent(Tile)
+            if (tile.isFalling) return
+            tile.highlight()
+        }
+        else {
+            let tile = event.target.getComponent(Tile)
+            this._currentSelectedTile = tile
+            this.highlightGroupbyTile(tile)
+        }
+    }
+
+    private onHoverEnd(this: PlayableArea, event: EventMouse) {
+        this._currentSelectedTile = null
+        this.unhighlight()
+    }
+
+    private onClick(this: PlayableArea, event: EventMouse) {
+        if (!this._gameInProgress) return
+
+        let tile = event.target.getComponent(Tile)
+        
+        if (tile.isFalling) return
+
+        let activeBonus = this._bonusManager.getActiveBonus()
+
+        if (activeBonus) {
+            if (activeBonus == "Explosion") {
+                this.applyExplosionBonus(tile)
+            }
+            this._bonusManager.useBonus(activeBonus)
+        }
+        else {
+            this.tryDestroyTileGroup(tile)
+        }
+        
     }
 
     private lose(this: PlayableArea) {
@@ -172,6 +220,8 @@ export class PlayableArea extends Component {
     start() {
         this.updateGameSettings()
         
+        this._bonusManager = new BonusManager(this.bonusButtons, this.bonusTypes)
+
         this._gameField = new GameField(this._height, this._width, this._tileMoveSpeed, this)
         this._tileGenerator = new TileGenerator(this.tileSpriteFrames.slice(0, this._colors), this.tilePrefab, this, this._gameField)
 
