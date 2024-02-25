@@ -173,7 +173,7 @@ export class PlayableArea extends Component {
         this.updateGameSettings()
         
         this._gameField = new GameField(this._height, this._width, this._tileMoveSpeed, this)
-        this._tileGenerator = new TileGenerator(this.tileSpriteFrames.slice(0, this._colors - 1), this.tilePrefab, this, this._gameField)
+        this._tileGenerator = new TileGenerator(this.tileSpriteFrames.slice(0, this._colors), this.tilePrefab, this, this._gameField)
 
         let callbacks: [Function, Function, Function] = [this.onHover, this.onHoverEnd, this.onClick]
 
