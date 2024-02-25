@@ -1,9 +1,10 @@
-import { _decorator, Component, EventMouse, Prefab, SpriteFrame, sys, } from 'cc';
+import { _decorator, Color, Component, EventMouse, Prefab, SpriteFrame, sys, } from 'cc';
 import { Tile } from './Tile';
 import { GameField } from './GameField';
 import { TileGenerator } from './TileGenerator';
 import { ScoreCounter } from './ScoreCounter';
 import { TurnsCounter } from './TurnsCounter';
+import { Popup } from './Popup';
 const { ccclass, property } = _decorator;
 
 @ccclass('PlayableArea')
@@ -15,6 +16,9 @@ export class PlayableArea extends Component {
     @property (SpriteFrame)
     public tileSpriteFrames: SpriteFrame[] = []
 
+    @property (Popup)
+    public popupWindow: Popup
+
     private _gameField: GameField
     private _tileGenerator: TileGenerator
 
@@ -25,8 +29,10 @@ export class PlayableArea extends Component {
 
     private _tileMoveSpeed = 10
 
-    private _scoreCounter = new ScoreCounter(10000)
-    private _turnsCounter = new TurnsCounter(50)
+    private _scoreCounter = new ScoreCounter(10000, this.win, this)
+    private _turnsCounter = new TurnsCounter(50, this.lose, this)
+
+    private _gameInProgress = false
 
     public getScoreCounter() {
         return this._scoreCounter
@@ -69,6 +75,8 @@ export class PlayableArea extends Component {
     private _currentSelectedTile = null
 
     private onHover(this: PlayableArea, event: EventMouse) {
+        if (!this._gameInProgress) return
+
         let tile = event.target.getComponent(Tile)
         this._currentSelectedTile = tile
         this.highlightGroupbyTile(tile)
@@ -80,6 +88,8 @@ export class PlayableArea extends Component {
     }
 
     private onClick(this: PlayableArea, event: EventMouse) {
+        if (!this._gameInProgress) return
+
         let tile = event.target.getComponent(Tile)
         
         if (tile.isFalling) {
@@ -139,6 +149,22 @@ export class PlayableArea extends Component {
         }
     }
 
+    private lose(this: PlayableArea) {
+        this._gameInProgress = false
+
+        this.popupWindow.setText("You lose :(")
+        this.popupWindow.setTextColor(new Color(255, 0, 0))
+        this.popupWindow.activate()
+    }
+
+    private win(this: PlayableArea) {
+        this._gameInProgress = false
+
+        this.popupWindow.setText("You win :)")
+        this.popupWindow.setTextColor(new Color(0, 255, 0))
+        this.popupWindow.activate()
+    }
+
     start() {
         this.updateGameSettings()
         
@@ -148,6 +174,7 @@ export class PlayableArea extends Component {
         let callbacks: [Function, Function, Function] = [this.onHover, this.onHoverEnd, this.onClick]
 
         this._gameField.generateField(this._tileGenerator, callbacks)
+        this._gameInProgress = true
     }
 
     update(deltaTime: number) {

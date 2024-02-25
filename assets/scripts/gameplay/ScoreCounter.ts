@@ -2,9 +2,13 @@ export class ScoreCounter {
 	private _currentScore = 0
 	private _goal = 10000
     private _scoreUpdatedCallbacks = []
+    private _winCallback: Function
+    private _winCallbackContext: any
 
-    public constructor(goal: number) {
+    public constructor(goal: number, winCallback: Function, callbackContext: any) {
     	this._goal = goal
+    	this._winCallback = winCallback
+    	this._winCallbackContext = callbackContext
     }
 
     public get CurrentScore() {
@@ -24,6 +28,7 @@ export class ScoreCounter {
 
     public addScore(score: number) {
     	this.CurrentScore += score
+    	if (this.CurrentScore >= this._goal) this._winCallback.apply(this._winCallbackContext)
     }
 
     public resetScore() {
