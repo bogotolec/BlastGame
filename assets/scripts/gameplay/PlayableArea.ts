@@ -25,7 +25,7 @@ export class PlayableArea extends Component {
 
     private _tileMoveSpeed = 10
 
-    private _scoreCounter = new ScoreCounter()
+    private _scoreCounter = new ScoreCounter(10000)
     private _turnsCounter = new TurnsCounter(50)
 
     public getScoreCounter() {

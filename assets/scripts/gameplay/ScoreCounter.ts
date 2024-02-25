@@ -1,6 +1,11 @@
 export class ScoreCounter {
 	private _currentScore = 0
+	private _goal = 10000
     private _scoreUpdatedCallbacks = []
+
+    public constructor(goal: number) {
+    	this._goal = goal
+    }
 
     public get CurrentScore() {
         return this._currentScore
@@ -11,6 +16,10 @@ export class ScoreCounter {
         this._scoreUpdatedCallbacks.forEach((callback: Function) => {
             callback()
         })
+    }
+
+    public getGoal() {
+    	return this._goal
     }
 
     public addScore(score: number) {
