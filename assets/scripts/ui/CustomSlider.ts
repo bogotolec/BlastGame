@@ -20,7 +20,7 @@ export class CustomSlider extends Component {
     }
 
     private valueToProgress(value: number) {
-        return (value - this.minValue) / this.maxValue
+        return (value - this.minValue) / (this.maxValue - this.minValue)
     }
 
     private saveValueToStorage(this) {
