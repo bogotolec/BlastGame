@@ -179,6 +179,10 @@ export class PlayableArea extends Component {
 
         this._gameField.generateField(this._tileGenerator, callbacks)
         this._gameInProgress = true
+
+        if (!this._gameField.isGroupOfSizeExists(this._minGroupSize)) {
+            this.lose()
+        }
     }
 
     update(deltaTime: number) {
