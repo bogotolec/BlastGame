@@ -156,6 +156,13 @@ export class PlayableArea extends Component {
         this.collapseTiles()
     }
 
+    private applySwapBonus(tile1: Tile, tile2: Tile) {
+        let x1 = tile1.x, y1 = tile1.y
+        let x2 = tile2.x, y2 = tile2.y
+        this._gameField.setTilePosition(tile1, x2, y2)
+        this._gameField.setTilePosition(tile2, x1, y1)
+    }
+
     private _currentSelectedTile = null
 
     private onHover(this: PlayableArea, event: EventMouse) {
@@ -192,8 +199,18 @@ export class PlayableArea extends Component {
         if (activeBonus) {
             if (activeBonus == "Explosion") {
                 this.applyExplosionBonus(tile)
+                this._bonusManager.useBonus(activeBonus)
             }
-            this._bonusManager.useBonus(activeBonus)
+            else if (activeBonus == "Swap") {
+                let otherTile = this._bonusManager.getRememberedTile()
+                if (!otherTile) {
+                    this._bonusManager.rememberTile(tile)
+                }
+                else if (otherTile.getColor() != tile.getColor()) {
+                    this.applySwapBonus(tile, otherTile)
+                    this._bonusManager.useBonus(activeBonus)
+                }
+            }
         }
         else {
             this.tryDestroyTileGroup(tile)

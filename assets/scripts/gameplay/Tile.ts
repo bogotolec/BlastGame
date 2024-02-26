@@ -36,6 +36,16 @@ export class Tile extends Component {
         sprite.color = this._defaultColor
     }
 
+    public mark() {
+        let marker = this.node.getChildByName("Marker")
+        marker.active = true
+    }
+
+    public unmark() {
+        let marker = this.node.getChildByName("Marker")
+        marker.active = false
+    }
+
     start() {
 
     }

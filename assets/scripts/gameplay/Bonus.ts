@@ -11,6 +11,7 @@ export class Bonus {
     private _label: Label
 
     private _onActivateCallbacks = []
+    private _onDeactivateCallbacks = []
 
 	public constructor(button: Button, amount: number, manager: BonusManager) {
         this._button = button
@@ -35,17 +36,23 @@ export class Bonus {
         }
     }
 
+    public deactivateBonus() {
+        this._button.normalColor = this._originalColor
+        this._isActive = false
+
+        this._onDeactivateCallbacks.forEach((callback: (bonus: Bonus) => any) => {callback.apply(this._manager, [this])})
+    }
+
     public isActive() {
         return this._isActive
     }
 
-    public deactivateBonus() {
-        this._button.normalColor = this._originalColor
-        this._isActive = false
-    }
-
     public onActivate(callback: (bonus: Bonus) => any) {
         this._onActivateCallbacks.push(callback)
+    }
+
+    public onDeactivate(callback: (bonus: Bonus) => any) {
+        this._onDeactivateCallbacks.push(callback)
     }
 
     public use() {

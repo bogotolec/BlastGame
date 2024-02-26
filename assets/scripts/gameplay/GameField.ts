@@ -164,6 +164,22 @@ export class GameField {
         return delay + tweenTime
     }
 
+    public setTilePosition(tile: Tile, x: number, y: number) {
+        let fromX = tile.x, fromY = tile.y
+
+        tile.x = x
+        tile.y = y
+
+        let [toPosX, toPosY] = this.getPositionFromCoords(x, y)
+        this._field[y][x] = tile
+        if (this._field[fromY][fromX] == tile) this._field[fromY][fromX] = null
+
+        let uiTransform = tile.getComponent(UITransform);
+        uiTransform.priority = y
+
+        tile.node.setPosition(toPosX, toPosY) 
+    }
+
     public pourTile(tile : Tile, toX: number, toY: number, delay: number) {
 
         let fromX = toX, fromY = this._height - 1
