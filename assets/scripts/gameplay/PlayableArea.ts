@@ -210,6 +210,9 @@ export class PlayableArea extends Component {
                     this.applySwapBonus(tile, otherTile)
                     this._bonusManager.useBonus(activeBonus)
                 }
+                else {
+                    this._bonusManager.unrememberTile()
+                }
             }
         }
         else {

@@ -37,6 +37,12 @@ export class BonusManager {
 		tile.mark()
 	}
 
+	public unrememberTile() {
+		if (this._rememberedTile) this._rememberedTile.unmark()
+		this._rememberedTile = null
+	}
+
+
 	public getRememberedTile() {
 		return this._rememberedTile
 	}
@@ -50,7 +56,6 @@ export class BonusManager {
 	}
 
 	private onBonusDeactivated(bonus: Bonus) {
-		if (this._rememberedTile) this._rememberedTile.unmark()
-		this._rememberedTile = null
+		this.unrememberTile()
 	}
 }
