@@ -45,6 +45,10 @@ export class TileGenerator {
 	        tile.on(Node.EventType.MOUSE_ENTER, onHover, this._originalComponent, tileComponent)
 	        tile.on(Node.EventType.MOUSE_LEAVE, onHoverEnd, this._originalComponent, tileComponent)
 	        tile.on(Node.EventType.MOUSE_DOWN, onClick, this._originalComponent, tileComponent)
+
+            tile.on(Node.EventType.TOUCH_START, onHover, this._originalComponent, tileComponent)
+            tile.on(Node.EventType.TOUCH_CANCEL, onHoverEnd, this._originalComponent, tileComponent)
+            tile.on(Node.EventType.TOUCH_END, onClick, this._originalComponent, tileComponent)
         }
 
         let color = this.getRandomColor()
